@@ -17,8 +17,8 @@
 
     <HBox spacing="10.0" alignment="CENTER_LEFT">
         <Label text="Buscar:" style="-fx-font-size: 14px;"/>
-        <TextField fx:id="txtBuscarSerie" promptText="Buscar por nombre de serie o autor..."
-                   prefWidth="350.0"/>
+        <TextField fx:id="txtBuscarSerie" promptText="Buscar por nombre de serie, autor o descripción..."
+                   prefWidth="400.0"/>
         <Region HBox.hgrow="ALWAYS"/>
         <Button fx:id="btnVerDetalles" text="Ver Detalles de Serie"
                 style="-fx-background-color: #007bff; -fx-text-fill: white; -fx-padding: 8 15 8 15; -fx-cursor: hand;"/>
@@ -27,13 +27,14 @@
     <TableView fx:id="tableSeries" VBox.vgrow="ALWAYS">
         <columns>
             <TableColumn fx:id="colIdSerie" text="ID" prefWidth="50.0"/>
-            <TableColumn fx:id="colSerieName" text="Nombre de la Serie" prefWidth="350.0"/>
-            <TableColumn fx:id="colAuthorName" text="Autor" prefWidth="250.0"/>
-            <TableColumn fx:id="colTotales" text="Total Volúmenes" prefWidth="130.0"/>
+            <TableColumn fx:id="colSerieName" text="Nombre de la Serie" prefWidth="250.0"/>
+            <TableColumn fx:id="colAuthorName" text="Autor" prefWidth="180.0"/>
+            <TableColumn fx:id="colTotales" text="Total Volúmenes" prefWidth="110.0"/>
+            <TableColumn fx:id="colDescripcion" text="Descripción" prefWidth="300.0"/>
         </columns>
     </TableView>
 
-    <Label text="Seleccione una serie y haga clic en 'Ver Detalles' o haga doble clic en una fila."
+    <Label text="Seleccione una serie y haga clic en 'Ver Detalles' o haga doble clic en una fila para ver más información."
            style="-fx-font-size: 12px; -fx-text-fill: #666666; -fx-font-style: italic;"
            wrapText="true"/>
 </VBox>

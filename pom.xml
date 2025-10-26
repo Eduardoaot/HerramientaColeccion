@@ -56,6 +56,13 @@
 			<artifactId>javafx-controls</artifactId>
 			<version>23.0.1</version>
 		</dependency>
+
+		<dependency>
+			<groupId>org.openjfx</groupId>
+			<artifactId>javafx-swing</artifactId>
+			<version>17.0.2</version>
+		</dependency>
+
 		<dependency>
 			<groupId>org.openjfx</groupId>
 			<artifactId>javafx-fxml</artifactId>

@@ -41,6 +41,10 @@ public class SerieController {
     @FXML
     private TableColumn<Serie, String> colTotales;
 
+    // NUEVO: Columna para descripción
+    @FXML
+    private TableColumn<Serie, String> colDescripcion;
+
     @FXML
     private TextField txtBuscarSerie;
 
@@ -78,12 +82,33 @@ public class SerieController {
         colTotales.setCellValueFactory(cellData ->
                 new SimpleStringProperty(cellData.getValue().getSerieTotals() != null ?
                         cellData.getValue().getSerieTotals().toString() : "0"));
+
+        // NUEVO: Configurar columna de descripción (si existe en el FXML)
+        if (colDescripcion != null) {
+            colDescripcion.setCellValueFactory(cellData -> {
+                String descripcion = "";
+                if (cellData.getValue().getDescripcionSerie() != null) {
+                    descripcion = cellData.getValue().getDescripcionSerie().getDescriptionSerie();
+                    // Limitar a 50 caracteres para la tabla
+                    if (descripcion != null && descripcion.length() > 50) {
+                        descripcion = descripcion.substring(0, 50) + "...";
+                    }
+                }
+                return new SimpleStringProperty(descripcion != null ? descripcion : "Sin descripción");
+            });
+        }
     }
 
     private void cargarSeries() {
-        List<Serie> series = serieServicio.listarSeries();
-        listaSeries = FXCollections.observableArrayList(series);
-        tableSeries.setItems(listaSeries);
+        try {
+            List<Serie> series = serieServicio.listarSeries();
+            listaSeries = FXCollections.observableArrayList(series);
+            tableSeries.setItems(listaSeries);
+            System.out.println("Series cargadas: " + series.size());
+        } catch (Exception e) {
+            e.printStackTrace();
+            mostrarAlerta("Error", "Error al cargar series: " + e.getMessage(), Alert.AlertType.ERROR);
+        }
     }
 
     private void buscarSerie(String criterio) {
@@ -108,6 +133,12 @@ public class SerieController {
                     serie.getAuthorName().toLowerCase().contains(criterioBusqueda)) {
                 coincide = true;
             }
+            // NUEVO: Buscar también en descripción
+            if (serie.getDescripcionSerie() != null &&
+                    serie.getDescripcionSerie().getDescriptionSerie() != null &&
+                    serie.getDescripcionSerie().getDescriptionSerie().toLowerCase().contains(criterioBusqueda)) {
+                coincide = true;
+            }
 
             if (coincide) {
                 seriesFiltradas.add(serie);
@@ -126,6 +157,7 @@ public class SerieController {
         }
 
         try {
+            System.out.println("Abriendo detalles para serie: " + serieSeleccionada.getSerieName());
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/templates/detalle-serie.fxml"));
             loader.setControllerFactory(springContext::getBean);
             Parent root = loader.load();

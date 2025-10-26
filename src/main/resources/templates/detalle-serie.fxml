@@ -17,6 +17,10 @@
                style="-fx-font-size: 22px; -fx-font-weight: bold; -fx-text-fill: #333333;"/>
         <Label fx:id="lblAutorName" text="Autor: "
                style="-fx-font-size: 14px; -fx-text-fill: #666666;"/>
+        <!-- NUEVO: Label para descripción -->
+        <Label fx:id="lblDescripcionSerie" text="Descripción de la serie..."
+               wrapText="true" maxWidth="900.0"
+               style="-fx-font-size: 13px; -fx-text-fill: #555555; -fx-padding: 10 0 0 0;"/>
     </VBox>
 
     <Separator/>
