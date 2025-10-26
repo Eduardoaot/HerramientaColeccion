@@ -37,7 +37,8 @@ public class IndexAPP {
 
     private void abrirVentanaUsuarios() {
         try {
-            FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/usuarios.fxml"));
+            // CAMBIADO: /fxml/ a /templates/
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/templates/usuarios.fxml"));
             loader.setControllerFactory(springContext::getBean);
             Parent root = loader.load();
 
@@ -47,12 +48,14 @@ public class IndexAPP {
             stage.show();
         } catch (Exception e) {
             e.printStackTrace();
+            System.err.println("Error al cargar usuarios.fxml: " + e.getMessage());
         }
     }
 
     private void abrirVentanaSeries() {
         try {
-            FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/series.fxml"));
+            // CAMBIADO: /fxml/ a /templates/
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/templates/series.fxml"));
             loader.setControllerFactory(springContext::getBean);
             Parent root = loader.load();
 
@@ -62,6 +65,7 @@ public class IndexAPP {
             stage.show();
         } catch (Exception e) {
             e.printStackTrace();
+            System.err.println("Error al cargar series.fxml: " + e.getMessage());
         }
     }
 
