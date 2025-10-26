@@ -151,7 +151,8 @@ public class DetalleSerieController {
 
     private void anadirManga() {
         try {
-            FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/editor-manga.fxml"));
+            // CAMBIADO: /fxml/ a /templates/
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/templates/editor-manga.fxml"));
             loader.setControllerFactory(springContext::getBean);
             Parent root = loader.load();
 
@@ -196,7 +197,8 @@ public class DetalleSerieController {
 
     private void abrirEditorManga(Manga manga) {
         try {
-            FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/editor-manga.fxml"));
+            // CAMBIADO: /fxml/ a /templates/
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/templates/editor-manga.fxml"));
             loader.setControllerFactory(springContext::getBean);
             Parent root = loader.load();
 
