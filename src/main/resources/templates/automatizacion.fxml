@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<VBox spacing="20.0" xmlns="http://javafx.com/javafx/21"
+      xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="mk.coleccion.controlador.APP.AutomatizacionController"
+      style="-fx-background-color: #f5f5f5;">
+    <padding>
+        <Insets bottom="20.0" left="20.0" right="20.0" top="20.0"/>
+    </padding>
+
+    <Label text="Automatización de Web Scraping"
+           style="-fx-font-size: 20px; -fx-font-weight: bold; -fx-text-fill: #333333;"/>
+
+    <Label text="Ejecute los procesos de actualización de datos desde las diferentes tiendas."
+           style="-fx-font-size: 13px; -fx-text-fill: #666666;"
+           wrapText="true"/>
+
+    <Separator/>
+
+    <VBox spacing="15.0">
+        <Label text="Seleccione la tienda para actualizar:"
+               style="-fx-font-size: 14px; -fx-font-weight: bold;"/>
+
+        <!-- Botón Panini -->
+        <HBox spacing="15.0" alignment="CENTER_LEFT"
+              style="-fx-background-color: white; -fx-padding: 15; -fx-border-color: #cccccc; -fx-border-width: 1; -fx-border-radius: 5; -fx-background-radius: 5;">
+            <VBox spacing="5.0" HBox.hgrow="ALWAYS">
+                <Label text="Panini Comics"
+                       style="-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #333333;"/>
+                <Label text="Actualiza el catálogo de mangas desde Panini Comics México"
+                       style="-fx-font-size: 12px; -fx-text-fill: #666666;"
+                       wrapText="true"/>
+            </VBox>
+            <Button fx:id="btnWebScrapingPanini" text="Actualizar Panini"
+                    prefWidth="150.0" prefHeight="40.0"
+                    style="-fx-background-color: #007bff; -fx-text-fill: white; -fx-font-size: 14px; -fx-cursor: hand;"/>
+        </HBox>
+
+        <!-- Botón Kamite -->
+        <HBox spacing="15.0" alignment="CENTER_LEFT"
+              style="-fx-background-color: white; -fx-padding: 15; -fx-border-color: #cccccc; -fx-border-width: 1; -fx-border-radius: 5; -fx-background-radius: 5;">
+            <VBox spacing="5.0" HBox.hgrow="ALWAYS">
+                <Label text="Kamité"
+                       style="-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #333333;"/>
+                <Label text="Actualiza el catálogo de mangas desde Kamité"
+                       style="-fx-font-size: 12px; -fx-text-fill: #666666;"
+                       wrapText="true"/>
+            </VBox>
+            <Button fx:id="btnWebScrapingKamite" text="Actualizar Kamité"
+                    prefWidth="150.0" prefHeight="40.0"
+                    style="-fx-background-color: #28a745; -fx-text-fill: white; -fx-font-size: 14px; -fx-cursor: hand;"/>
+        </HBox>
+
+        <!-- Botón Gandhi/Distrito -->
+        <HBox spacing="15.0" alignment="CENTER_LEFT"
+              style="-fx-background-color: white; -fx-padding: 15; -fx-border-color: #cccccc; -fx-border-width: 1; -fx-border-radius: 5; -fx-background-radius: 5;">
+            <VBox spacing="5.0" HBox.hgrow="ALWAYS">
+                <Label text="Gandhi / Distrito"
+                       style="-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #333333;"/>
+                <Label text="Actualiza el catálogo de mangas desde Gandhi y Distrito Manga"
+                       style="-fx-font-size: 12px; -fx-text-fill: #666666;"
+                       wrapText="true"/>
+            </VBox>
+            <Button fx:id="btnWebScrapingGandhi" text="Actualizar Distrito"
+                    prefWidth="150.0" prefHeight="40.0"
+                    style="-fx-background-color: #dc3545; -fx-text-fill: white; -fx-font-size: 14px; -fx-cursor: hand;"/>
+        </HBox>
+    </VBox>
+
+    <Separator/>
+
+    <!-- Indicador de progreso -->
+    <HBox alignment="CENTER" spacing="10.0">
+        <ProgressIndicator fx:id="progressIndicator" prefWidth="40.0" prefHeight="40.0"/>
+        <Label text="Procesando..." style="-fx-font-size: 13px; -fx-text-fill: #666666;"/>
+    </HBox>
+
+    <!-- Log de salida -->
+    <VBox spacing="5.0" VBox.vgrow="ALWAYS">
+        <Label text="Log de Ejecución:"
+               style="-fx-font-size: 14px; -fx-font-weight: bold;"/>
+        <TextArea fx:id="txtLog" editable="false" wrapText="true"
+                  prefHeight="300.0"
+                  style="-fx-font-family: 'Courier New'; -fx-font-size: 11px; -fx-control-inner-background: #1e1e1e; -fx-text-fill: #ffffff;"/>
+    </VBox>
+
+    <Label text="⚠️ ADVERTENCIA: Los procesos de scraping pueden tardar varios minutos. No cierre esta ventana hasta que finalice."
+           style="-fx-font-size: 12px; -fx-text-fill: #dc3545; -fx-font-style: italic; -fx-font-weight: bold;"
+           wrapText="true"/>
+</VBox>

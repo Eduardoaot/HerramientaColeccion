@@ -16,6 +16,7 @@ import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.stereotype.Controller;
 
 import java.util.List;
+import java.util.Optional;
 
 @Controller
 public class SerieController {
@@ -41,7 +42,6 @@ public class SerieController {
     @FXML
     private TableColumn<Serie, String> colTotales;
 
-    // NUEVO: Columna para descripción
     @FXML
     private TableColumn<Serie, String> colDescripcion;
 
@@ -51,6 +51,15 @@ public class SerieController {
     @FXML
     private Button btnVerDetalles;
 
+    @FXML
+    private Button btnAgregarSerie;
+
+    @FXML
+    private Button btnEditarSerie;
+
+    @FXML
+    private Button btnEliminarSerie;
+
     private ObservableList<Serie> listaSeries;
 
     @FXML
@@ -59,9 +68,11 @@ public class SerieController {
         cargarSeries();
 
         btnVerDetalles.setOnAction(event -> verDetallesSerie());
+        btnAgregarSerie.setOnAction(event -> agregarSerie());
+        btnEditarSerie.setOnAction(event -> editarSerie());
+        btnEliminarSerie.setOnAction(event -> eliminarSerie());
         txtBuscarSerie.textProperty().addListener((observable, oldValue, newValue) -> buscarSerie(newValue));
 
-        // Doble clic en una serie abre los detalles
         tableSeries.setOnMouseClicked(event -> {
             if (event.getClickCount() == 2) {
                 verDetallesSerie();
@@ -83,13 +94,11 @@ public class SerieController {
                 new SimpleStringProperty(cellData.getValue().getSerieTotals() != null ?
                         cellData.getValue().getSerieTotals().toString() : "0"));
 
-        // NUEVO: Configurar columna de descripción (si existe en el FXML)
         if (colDescripcion != null) {
             colDescripcion.setCellValueFactory(cellData -> {
                 String descripcion = "";
                 if (cellData.getValue().getDescripcionSerie() != null) {
                     descripcion = cellData.getValue().getDescripcionSerie().getDescriptionSerie();
-                    // Limitar a 50 caracteres para la tabla
                     if (descripcion != null && descripcion.length() > 50) {
                         descripcion = descripcion.substring(0, 50) + "...";
                     }
@@ -109,6 +118,10 @@ public class SerieController {
             e.printStackTrace();
             mostrarAlerta("Error", "Error al cargar series: " + e.getMessage(), Alert.AlertType.ERROR);
         }
+    }
+
+    public void recargarSeries() {
+        cargarSeries();
     }
 
     private void buscarSerie(String criterio) {
@@ -133,7 +146,6 @@ public class SerieController {
                     serie.getAuthorName().toLowerCase().contains(criterioBusqueda)) {
                 coincide = true;
             }
-            // NUEVO: Buscar también en descripción
             if (serie.getDescripcionSerie() != null &&
                     serie.getDescripcionSerie().getDescriptionSerie() != null &&
                     serie.getDescripcionSerie().getDescriptionSerie().toLowerCase().contains(criterioBusqueda)) {
@@ -146,6 +158,80 @@ public class SerieController {
         }
 
         tableSeries.setItems(seriesFiltradas);
+    }
+
+    private void agregarSerie() {
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/templates/editor-serie.fxml"));
+            loader.setControllerFactory(springContext::getBean);
+            Parent root = loader.load();
+
+            EditorSerieController controller = loader.getController();
+            controller.setModoCreacion(true);
+            controller.setSerieController(this);
+
+            Stage stage = new Stage();
+            stage.setTitle("Agregar Nueva Serie");
+            stage.setScene(new Scene(root, 600, 500));
+            stage.showAndWait();
+        } catch (Exception e) {
+            e.printStackTrace();
+            mostrarAlerta("Error", "Error al abrir editor: " + e.getMessage(), Alert.AlertType.ERROR);
+        }
+    }
+
+    private void editarSerie() {
+        Serie serieSeleccionada = tableSeries.getSelectionModel().getSelectedItem();
+
+        if (serieSeleccionada == null) {
+            mostrarAlerta("Error", "Debe seleccionar una serie para editar", Alert.AlertType.ERROR);
+            return;
+        }
+
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/templates/editor-serie.fxml"));
+            loader.setControllerFactory(springContext::getBean);
+            Parent root = loader.load();
+
+            EditorSerieController controller = loader.getController();
+            controller.setSerieSeleccionada(serieSeleccionada);
+            controller.setModoCreacion(false);
+            controller.setSerieController(this);
+
+            Stage stage = new Stage();
+            stage.setTitle("Editar Serie: " + serieSeleccionada.getSerieName());
+            stage.setScene(new Scene(root, 600, 500));
+            stage.showAndWait();
+        } catch (Exception e) {
+            e.printStackTrace();
+            mostrarAlerta("Error", "Error al abrir editor: " + e.getMessage(), Alert.AlertType.ERROR);
+        }
+    }
+
+    private void eliminarSerie() {
+        Serie serieSeleccionada = tableSeries.getSelectionModel().getSelectedItem();
+
+        if (serieSeleccionada == null) {
+            mostrarAlerta("Error", "Debe seleccionar una serie para eliminar", Alert.AlertType.ERROR);
+            return;
+        }
+
+        Alert confirmacion = new Alert(Alert.AlertType.CONFIRMATION);
+        confirmacion.setTitle("Confirmar eliminación");
+        confirmacion.setHeaderText("¿Está seguro de eliminar esta serie?");
+        confirmacion.setContentText("Serie: " + serieSeleccionada.getSerieName() +
+                "\n\nADVERTENCIA: Esto eliminará todos los mangas asociados a esta serie.");
+
+        Optional<ButtonType> resultado = confirmacion.showAndWait();
+        if (resultado.isPresent() && resultado.get() == ButtonType.OK) {
+            try {
+                serieServicio.eliminarSerie(serieSeleccionada);
+                mostrarAlerta("Éxito", "Serie eliminada correctamente", Alert.AlertType.INFORMATION);
+                cargarSeries();
+            } catch (Exception e) {
+                mostrarAlerta("Error", "Error al eliminar serie: " + e.getMessage(), Alert.AlertType.ERROR);
+            }
+        }
     }
 
     private void verDetallesSerie() {

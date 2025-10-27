@@ -6,7 +6,6 @@ import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.stage.Stage;
-import mk.coleccion.ColeccionApplication;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.stereotype.Controller;
 
@@ -37,7 +36,6 @@ public class IndexAPP {
 
     private void abrirVentanaUsuarios() {
         try {
-            // CAMBIADO: /fxml/ a /templates/
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/templates/usuarios.fxml"));
             loader.setControllerFactory(springContext::getBean);
             Parent root = loader.load();
@@ -54,7 +52,6 @@ public class IndexAPP {
 
     private void abrirVentanaSeries() {
         try {
-            // CAMBIADO: /fxml/ a /templates/
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/templates/series.fxml"));
             loader.setControllerFactory(springContext::getBean);
             Parent root = loader.load();
@@ -70,7 +67,18 @@ public class IndexAPP {
     }
 
     private void abrirVentanaAutomatizacion() {
-        // Implementar según tus necesidades
-        System.out.println("Ventana de Automatización - Por implementar");
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/templates/automatizacion.fxml"));
+            loader.setControllerFactory(springContext::getBean);
+            Parent root = loader.load();
+
+            Stage stage = new Stage();
+            stage.setTitle("Automatización de Web Scraping");
+            stage.setScene(new Scene(root, 800, 700));
+            stage.show();
+        } catch (Exception e) {
+            e.printStackTrace();
+            System.err.println("Error al cargar automatizacion.fxml: " + e.getMessage());
+        }
     }
 }

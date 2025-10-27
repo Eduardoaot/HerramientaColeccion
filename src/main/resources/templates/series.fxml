@@ -18,23 +18,29 @@
     <HBox spacing="10.0" alignment="CENTER_LEFT">
         <Label text="Buscar:" style="-fx-font-size: 14px;"/>
         <TextField fx:id="txtBuscarSerie" promptText="Buscar por nombre de serie, autor o descripción..."
-                   prefWidth="400.0"/>
+                   prefWidth="300.0"/>
         <Region HBox.hgrow="ALWAYS"/>
-        <Button fx:id="btnVerDetalles" text="Ver Detalles de Serie"
+        <Button fx:id="btnAgregarSerie" text="+ Agregar Serie"
+                style="-fx-background-color: #28a745; -fx-text-fill: white; -fx-padding: 8 15 8 15; -fx-cursor: hand;"/>
+        <Button fx:id="btnEditarSerie" text="Editar Serie"
                 style="-fx-background-color: #007bff; -fx-text-fill: white; -fx-padding: 8 15 8 15; -fx-cursor: hand;"/>
+        <Button fx:id="btnEliminarSerie" text="Eliminar Serie"
+                style="-fx-background-color: #dc3545; -fx-text-fill: white; -fx-padding: 8 15 8 15; -fx-cursor: hand;"/>
+        <Button fx:id="btnVerDetalles" text="Ver Detalles"
+                style="-fx-background-color: #17a2b8; -fx-text-fill: white; -fx-padding: 8 15 8 15; -fx-cursor: hand;"/>
     </HBox>
 
     <TableView fx:id="tableSeries" VBox.vgrow="ALWAYS">
         <columns>
             <TableColumn fx:id="colIdSerie" text="ID" prefWidth="50.0"/>
-            <TableColumn fx:id="colSerieName" text="Nombre de la Serie" prefWidth="250.0"/>
-            <TableColumn fx:id="colAuthorName" text="Autor" prefWidth="180.0"/>
+            <TableColumn fx:id="colSerieName" text="Nombre de la Serie" prefWidth="200.0"/>
+            <TableColumn fx:id="colAuthorName" text="Autor" prefWidth="150.0"/>
             <TableColumn fx:id="colTotales" text="Total Volúmenes" prefWidth="110.0"/>
-            <TableColumn fx:id="colDescripcion" text="Descripción" prefWidth="300.0"/>
+            <TableColumn fx:id="colDescripcion" text="Descripción" prefWidth="400.0"/>
         </columns>
     </TableView>
 
-    <Label text="Seleccione una serie y haga clic en 'Ver Detalles' o haga doble clic en una fila para ver más información."
+    <Label text="Seleccione una serie y use los botones superiores, o haga doble clic en una fila para ver más información."
            style="-fx-font-size: 12px; -fx-text-fill: #666666; -fx-font-style: italic;"
            wrapText="true"/>
 </VBox>

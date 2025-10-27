@@ -112,7 +112,7 @@ public class EditorSerieController {
             mostrarAlerta("Éxito", mensaje, Alert.AlertType.INFORMATION);
 
             if (serieController != null) {
-                serieController.cargarSeries();
+                serieController.recargarSeries();
             }
 
             cerrarVentana();
