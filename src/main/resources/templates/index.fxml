@@ -29,5 +29,8 @@
         <Button fx:id="btnAutomatizacion" text="Automatización"
                 prefWidth="250.0" prefHeight="50.0"
                 style="-fx-background-color: #ffc107; -fx-text-fill: white; -fx-font-size: 16px; -fx-background-radius: 5;"/>
+        <Button fx:id="btnFusionador" text="🔀 Fusionar Series Duplicadas"
+                prefWidth="250.0" prefHeight="50.0"
+                style="-fx-background-color: #dc3545; -fx-text-fill: white; -fx-font-size: 16px; -fx-background-radius: 5;"/>
     </VBox>
 </VBox>

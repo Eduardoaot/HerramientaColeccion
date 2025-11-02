@@ -21,6 +21,9 @@ public class IndexAPP {
     @FXML
     private Button btnAutomatizacion;
 
+    @FXML
+    private Button btnFusionador;
+
     private ConfigurableApplicationContext springContext;
 
     public void setSpringContext(ConfigurableApplicationContext springContext) {
@@ -32,6 +35,7 @@ public class IndexAPP {
         btnUsuario.setOnAction(event -> abrirVentanaUsuarios());
         btnManga.setOnAction(event -> abrirVentanaSeries());
         btnAutomatizacion.setOnAction(event -> abrirVentanaAutomatizacion());
+        btnFusionador.setOnAction(event -> abrirVentanaFusionador());
     }
 
     private void abrirVentanaUsuarios() {
@@ -79,6 +83,22 @@ public class IndexAPP {
         } catch (Exception e) {
             e.printStackTrace();
             System.err.println("Error al cargar automatizacion.fxml: " + e.getMessage());
+        }
+    }
+
+    private void abrirVentanaFusionador() {
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/templates/fusionador-series.fxml"));
+            loader.setControllerFactory(springContext::getBean);
+            Parent root = loader.load();
+
+            Stage stage = new Stage();
+            stage.setTitle("Fusionador de Series Duplicadas");
+            stage.setScene(new Scene(root, 1200, 800));
+            stage.show();
+        } catch (Exception e) {
+            e.printStackTrace();
+            System.err.println("Error al cargar fusionador-series.fxml: " + e.getMessage());
         }
     }
 }
