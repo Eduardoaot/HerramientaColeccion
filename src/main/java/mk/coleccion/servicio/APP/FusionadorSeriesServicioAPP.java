@@ -6,10 +6,17 @@ import org.springframework.stereotype.Service;
 import javax.sql.DataSource;
 import java.sql.*;
 import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
- * Servicio para detectar series duplicadas/similares y fusionarlas.
- * Resuelve el problema de series fragmentadas por web scraping.
+ * Servicio MEJORADO para detectar series duplicadas/similares y fusionarlas.
+ *
+ * MEJORAS PRINCIPALES:
+ * 1. Detección de números de tomo en el nombre de la serie
+ * 2. Normalización más agresiva para detectar duplicados
+ * 3. Extracción automática de serie_totals desde nombres como "SERIE X (de Y)"
+ * 4. Mejor agrupación de series fragmentadas por web scraping
  */
 @Service
 public class FusionadorSeriesServicioAPP {
@@ -27,6 +34,8 @@ public class FusionadorSeriesServicioAPP {
         private Integer mangasEnBD;
         private String autor;
         private List<Float> volumenesExistentes;
+        private Integer numeroTomoEnNombre; // NUEVO: número de tomo detectado en el nombre
+        private Integer totalEsperadoEnNombre; // NUEVO: total esperado detectado (de "de XX")
 
         public SerieCandidato(Integer idSerie, String nombreSerie, Integer volumenesDeclarados,
                               Integer mangasEnBD, String autor) {
@@ -48,6 +57,13 @@ public class FusionadorSeriesServicioAPP {
         public void setVolumenesExistentes(List<Float> volumenes) {
             this.volumenesExistentes = volumenes;
         }
+
+        // NUEVO: Getters y setters para números detectados
+        public Integer getNumeroTomoEnNombre() { return numeroTomoEnNombre; }
+        public void setNumeroTomoEnNombre(Integer numero) { this.numeroTomoEnNombre = numero; }
+
+        public Integer getTotalEsperadoEnNombre() { return totalEsperadoEnNombre; }
+        public void setTotalEsperadoEnNombre(Integer total) { this.totalEsperadoEnNombre = total; }
     }
 
     /**
@@ -77,10 +93,18 @@ public class FusionadorSeriesServicioAPP {
         }
 
         public int getMaxVolumenesDeclarados() {
-            return series.stream()
+            // MEJORADO: Considera también los totales detectados en nombres
+            int maxDeclarado = series.stream()
                     .mapToInt(s -> s.getVolumenesDeclarados() != null ? s.getVolumenesDeclarados() : 0)
                     .max()
                     .orElse(0);
+
+            int maxEnNombre = series.stream()
+                    .mapToInt(s -> s.getTotalEsperadoEnNombre() != null ? s.getTotalEsperadoEnNombre() : 0)
+                    .max()
+                    .orElse(0);
+
+            return Math.max(maxDeclarado, maxEnNombre);
         }
     }
 
@@ -155,7 +179,119 @@ public class FusionadorSeriesServicioAPP {
     }
 
     /**
+     * NUEVO: Extrae el número de tomo del nombre de la serie
+     * Ejemplos:
+     * - "CAPITAN TSUBASA - SUPER CAMPEONES 19" -> 19
+     * - "20TH CENTURY BOYS 5 (de 22)" -> 5
+     * - "ONE PIECE 100" -> 100
+     */
+    private Integer extraerNumeroTomo(String nombreSerie) {
+        if (nombreSerie == null) return null;
+
+        // Patrón 1: Número seguido de "(de X)" - ej: "SERIE 5 (de 22)"
+        Pattern patron1 = Pattern.compile("\\s+(\\d+)\\s*\\(de\\s+\\d+\\)", Pattern.CASE_INSENSITIVE);
+        Matcher m1 = patron1.matcher(nombreSerie);
+        if (m1.find()) {
+            return Integer.parseInt(m1.group(1));
+        }
+
+        // Patrón 2: Guion seguido de número al final - ej: "SERIE - 19"
+        Pattern patron2 = Pattern.compile("-\\s*(\\d+)\\s*$");
+        Matcher m2 = patron2.matcher(nombreSerie);
+        if (m2.find()) {
+            return Integer.parseInt(m2.group(1));
+        }
+
+        // Patrón 3: Número al final - ej: "SERIE 100"
+        Pattern patron3 = Pattern.compile("\\s+(\\d+)\\s*$");
+        Matcher m3 = patron3.matcher(nombreSerie);
+        if (m3.find()) {
+            return Integer.parseInt(m3.group(1));
+        }
+
+        return null;
+    }
+
+    /**
+     * NUEVO: Extrae el total esperado del nombre (de patrones como "de 22")
+     * Ejemplo: "20TH CENTURY BOYS 5 (de 22)" -> 22
+     */
+    private Integer extraerTotalEsperado(String nombreSerie) {
+        if (nombreSerie == null) return null;
+
+        Pattern patron = Pattern.compile("\\(de\\s+(\\d+)\\)", Pattern.CASE_INSENSITIVE);
+        Matcher matcher = patron.matcher(nombreSerie);
+        if (matcher.find()) {
+            return Integer.parseInt(matcher.group(1));
+        }
+
+        return null;
+    }
+
+    /**
+     * Normaliza el nombre de una serie para detectar similitudes
+     * MEJORADO: Detecta mejor números de tomo en diferentes formatos
+     */
+    private String normalizarNombreSerie(String nombre) {
+        if (nombre == null) return "";
+
+        String normalizado = nombre.toLowerCase()
+                // Remover acentos comunes
+                .replace("á", "a").replace("é", "e").replace("í", "i")
+                .replace("ó", "o").replace("ú", "u").replace("ñ", "n")
+
+                // Quitar paréntesis y su contenido COMPLETO (como "de 22")
+                .replaceAll("\\s*\\([^)]*\\)\\s*", " ")
+
+                // Quitar corchetes y su contenido
+                .replaceAll("\\s*\\[[^]]*\\]\\s*", " ")
+
+                // Quitar "de XX" o "de XXX" al final
+                .replaceAll("\\s+de\\s+\\d+\\s*$", "")
+
+                // Quitar "vol", "volumen", "volume" + número
+                .replaceAll("\\s+vol\\.?\\s*\\d+.*$", "")
+                .replaceAll("\\s+volumen\\s+\\d+.*$", "")
+                .replaceAll("\\s+volume\\s+\\d+.*$", "")
+
+                // Quitar "tomo" o "tome" + número
+                .replaceAll("\\s+tomo\\s+\\d+.*$", "")
+                .replaceAll("\\s+tome\\s+\\d+.*$", "")
+
+                // Quitar "n.", "n ", "no.", "num." + número
+                .replaceAll("\\s+n\\.?\\s*\\d+.*$", "")
+                .replaceAll("\\s+no\\.?\\s*\\d+.*$", "")
+                .replaceAll("\\s+num\\.?\\s*\\d+.*$", "")
+
+                // Quitar guiones seguidos de número (como "- 19")
+                .replaceAll("\\s*-\\s*\\d+\\s*$", "")
+
+                // Quitar número al final (más agresivo)
+                .replaceAll("\\s+\\d+\\s*$", "")
+
+                // Quitar palabras comunes que fragmentan
+                .replaceAll("\\s+super\\s+campeones", "")
+                .replaceAll("\\s+boxset", "")
+                .replaceAll("\\s+box\\s+set", "")
+                .replaceAll("\\s+pack", "")
+                .replaceAll("\\s+bundle", "")
+                .replaceAll("\\s+coleccion\\s+completa", "")
+                .replaceAll("\\s+edicion\\s+especial", "")
+                .replaceAll("\\s+special\\s+edition", "")
+
+                // Quitar caracteres especiales EXCEPTO espacios
+                .replaceAll("[^a-z0-9\\s]", "")
+
+                // Normalizar espacios múltiples
+                .replaceAll("\\s+", " ")
+                .trim();
+
+        return normalizado;
+    }
+
+    /**
      * Detecta series candidatas a fusión basándose en similitud de nombres
+     * MEJORADO: Extrae información de números en los nombres
      */
     public List<GrupoFusion> detectarSeriesSimilares() {
         Map<String, GrupoFusion> grupos = new HashMap<>();
@@ -189,6 +325,10 @@ public class FusionadorSeriesServicioAPP {
                         idSerie, nombreSerie, volumenesDeclarados, mangasEnBD, autor
                 );
 
+                // NUEVO: Extraer información del nombre
+                candidato.setNumeroTomoEnNombre(extraerNumeroTomo(nombreSerie));
+                candidato.setTotalEsperadoEnNombre(extraerTotalEsperado(nombreSerie));
+
                 // Obtener volúmenes existentes
                 candidato.setVolumenesExistentes(obtenerVolumenesExistentes(conn, idSerie));
 
@@ -208,23 +348,6 @@ public class FusionadorSeriesServicioAPP {
                 .filter(g -> g.getSeries().size() > 1)
                 .sorted((g1, g2) -> g2.getTotalMangas() - g1.getTotalMangas())
                 .toList();
-    }
-
-    /**
-     * Normaliza el nombre de una serie para detectar similitudes
-     */
-    private String normalizarNombreSerie(String nombre) {
-        if (nombre == null) return "";
-
-        return nombre.toLowerCase()
-                .replaceAll("\\s*\\(.*?\\)\\s*", "") // Quitar paréntesis y su contenido
-                .replaceAll("\\s*\\[.*?\\]\\s*", "") // Quitar corchetes
-                .replaceAll("\\s+de\\s+\\d+\\s*$", "") // Quitar "de XX" al final
-                .replaceAll("\\s+vol\\.?\\s*\\d+.*$", "") // Quitar "vol. X"
-                .replaceAll("\\s+tomo\\s+\\d+.*$", "") // Quitar "tomo X"
-                .replaceAll("[^a-z0-9\\s]", "") // Quitar caracteres especiales
-                .replaceAll("\\s+", " ") // Normalizar espacios
-                .trim();
     }
 
     /**
@@ -262,6 +385,7 @@ public class FusionadorSeriesServicioAPP {
 
     /**
      * Ejecuta la fusión de series en la base de datos
+     * MEJORADO: Actualiza serie_totals con el máximo valor detectado
      */
     @org.springframework.transaction.annotation.Transactional
     public ResultadoFusion fusionarSeries(PrevisualizacionFusion preview) {
@@ -286,11 +410,10 @@ public class FusionadorSeriesServicioAPP {
                         resultado.addMangasMovidos(mangasMovidos);
                     }
 
-                    // 2. Actualizar coleccion_serie (en dos pasos para evitar el error de MySQL)
-// Paso 2a: Obtener usuarios que tienen la serie origen
+                    // 2. Actualizar coleccion_serie
                     String selectUsuarios =
                             "SELECT DISTINCT id_usuario FROM coleccion_serie WHERE id_serie = ?";
-                    java.util.List<Integer> usuariosAfectados = new java.util.ArrayList<>();
+                    List<Integer> usuariosAfectados = new ArrayList<>();
                     try (PreparedStatement ps = conn.prepareStatement(selectUsuarios)) {
                         ps.setInt(1, idOrigen);
                         ResultSet rs = ps.executeQuery();
@@ -299,7 +422,6 @@ public class FusionadorSeriesServicioAPP {
                         }
                     }
 
-// Paso 2b: Actualizar cada usuario si no tiene ya la serie destino
                     String updateColeccionSerie =
                             "UPDATE coleccion_serie SET id_serie = ? " +
                                     "WHERE id_serie = ? AND id_usuario = ? " +
@@ -335,8 +457,12 @@ public class FusionadorSeriesServicioAPP {
                     }
                 }
 
-                // 5. Actualizar serie_totals del destino
-                int nuevoTotal = preview.getVolumenesFinales().size();
+                // 5. MEJORADO: Actualizar serie_totals del destino con el máximo valor detectado
+                int nuevoTotal = preview.getGrupo().getMaxVolumenesDeclarados();
+                if (nuevoTotal == 0) {
+                    nuevoTotal = preview.getVolumenesFinales().size();
+                }
+
                 String updateTotales =
                         "UPDATE serie SET serie_totals = ? WHERE id_serie = ?";
                 try (PreparedStatement ps = conn.prepareStatement(updateTotales)) {
