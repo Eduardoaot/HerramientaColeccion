@@ -70,7 +70,7 @@ public class PruebaConexionBaseDeDatos {
 
                 for (WebElement producto : productos) {
                     String html = producto.getAttribute("outerHTML");
-                    int paginaActual = pagina; // Necesario para usar dentro de lambda
+                    int paginaActual = pagina;
                     executor.submit(() -> procesarProducto(html, opcionesBase, paginaActual));
                     try { Thread.sleep(100 + (int) (Math.random() * 400)); } catch (InterruptedException ignored) {}
                 }
@@ -87,7 +87,6 @@ public class PruebaConexionBaseDeDatos {
         }
     }
 
-
     private void procesarProducto(String html, ChromeOptions opciones, int pagina) {
         WebDriver driver = null;
         try (Connection conn = DriverManager.getConnection(DB_URL, DB_USER, DB_PASS)) {
@@ -99,17 +98,15 @@ public class PruebaConexionBaseDeDatos {
             String nombreProducto = nombreTag.getText().trim();
             String enlaceProducto = nombreTag.getAttribute("href");
 
-            // ===== Número de tomo =====
-            Matcher matcher = Pattern.compile("N\\.(\\d+)").matcher(nombreProducto);
-            String numeroTomo = matcher.find() ? matcher.group(1) : "0";
-            float tomoNumero = Float.parseFloat(numeroTomo);
+            // ===== MEJORA: Extraer número de tomo con múltiples patrones =====
+            String numeroTomo = extraerNumeroTomo(nombreProducto);
+            float tomoNumero = numeroTomo.equals("0") ? 1.0f : Float.parseFloat(numeroTomo);
 
             // ===== Imagen principal =====
             WebElement imgTag = driver.findElement(By.cssSelector("img.product-image-photo"));
             String imagenUrl = imgTag.getAttribute("src").split("\\?")[0] +
                     "?optimize=none&fit=bounds&width=320&height=452&canvas=320:452";
 
-            // Verificar placeholder
             if (imagenUrl.contains("panini-placeholder.png")) {
                 String mensajeFallido = "Página " + pagina + " - " + nombreProducto + " - Imagen placeholder";
                 registrarMangaFallido(mensajeFallido);
@@ -117,7 +114,6 @@ public class PruebaConexionBaseDeDatos {
                 return;
             }
 
-            // Descargar imagen
             byte[] imagenBytes = descargarImagenComoBytes(imagenUrl);
             if (imagenBytes.length == 0) {
                 String mensajeFallido = "Página " + pagina + " - " + nombreProducto + " - Error descargando imagen";
@@ -150,23 +146,23 @@ public class PruebaConexionBaseDeDatos {
             float precio = 0;
             try { precio = Float.parseFloat(precioStr); } catch (Exception ignored) {}
 
-            String nombreSerie = titulo.replaceAll("(?i)Tomo.*", "").trim();
-            nombreSerie = nombreSerie.replaceAll("\\s*N\\.?\\s*\\d+", "").trim();
+            // ===== MEJORA: Normalizar nombre de serie =====
+            String nombreSerie = normalizarNombreSerie(titulo);
             String autor = "Desconocido";
 
             // ===== Guardar en BD =====
-            int idSerie = obtenerOInsertarSerie(conn, nombreSerie, descripcion, autor, tomoNumero);
+            int idSerie = obtenerOInsertarSerieNormalizada(conn, nombreSerie, descripcion, autor, tomoNumero);
             int idImagen = insertarImagen(conn, imagenBytes, nombreImagen);
             int idDescripcionManga = insertarDescripcionManga(conn, descripcion);
 
             if (!mangaExiste(conn, idSerie, tomoNumero)) {
                 insertarManga(conn, LocalDateTime.now(), precio, tomoNumero, idDescripcionManga, idImagen, idSerie);
                 synchronized (System.out) {
-                    System.out.println("✅ Insertado manga: " + titulo + " (" + nombreSerie + ")");
+                    System.out.println("✅ Insertado manga: " + titulo + " (" + nombreSerie + ") - Tomo " + tomoNumero);
                 }
             } else {
                 synchronized (System.out) {
-                    System.out.println("⚠️ Manga ya existente: " + titulo);
+                    System.out.println("⚠️ Manga ya existente: " + titulo + " - Tomo " + tomoNumero);
                 }
             }
 
@@ -179,32 +175,97 @@ public class PruebaConexionBaseDeDatos {
         }
     }
 
+    // ========== NUEVOS MÉTODOS DE NORMALIZACIÓN ==========
 
-    private void logError(String mensaje) {
-        try (BufferedWriter writer = new BufferedWriter(new FileWriter("Mangas_faltantes/error_log.txt", true))) {
-            writer.write(mensaje);
-            writer.newLine();
-        } catch (IOException e) {
-            System.out.println("❌ Error al escribir en el archivo de log: " + e.getMessage());
+    /**
+     * Extrae el número de tomo del título usando múltiples patrones
+     */
+    private String extraerNumeroTomo(String titulo) {
+        // Patrón 1: "N.XX" o "N XX" (más común en Panini)
+        Pattern patron1 = Pattern.compile("\\bN\\.?\\s*(\\d+)\\b", Pattern.CASE_INSENSITIVE);
+        Matcher m1 = patron1.matcher(titulo);
+        if (m1.find()) {
+            return m1.group(1);
         }
+
+        // Patrón 2: "Tomo XX" o "Vol. XX" o "Volumen XX"
+        Pattern patron2 = Pattern.compile("\\b(?:Tomo|Vol\\.?|Volumen)\\s*(\\d+)\\b", Pattern.CASE_INSENSITIVE);
+        Matcher m2 = patron2.matcher(titulo);
+        if (m2.find()) {
+            return m2.group(1);
+        }
+
+        // Patrón 3: Número al final del título (ej: "One Piece 105")
+        Pattern patron3 = Pattern.compile("\\s+(\\d+)\\s*$");
+        Matcher m3 = patron3.matcher(titulo);
+        if (m3.find()) {
+            return m3.group(1);
+        }
+
+        // Patrón 4: Entre paréntesis (ej: "Serie (5)")
+        Pattern patron4 = Pattern.compile("\\((\\d+)\\)");
+        Matcher m4 = patron4.matcher(titulo);
+        if (m4.find()) {
+            return m4.group(1);
+        }
+
+        // Si no se encuentra nada, asumir tomo 1
+        return "1";
     }
 
+    /**
+     * Normaliza el nombre de una serie para detectar duplicados
+     * Elimina: símbolos especiales, números al final, espacios múltiples, mayúsculas
+     */
+    private String normalizarNombreSerie(String titulo) {
+        // 1. Eliminar indicadores de tomo
+        String limpio = titulo.replaceAll("(?i)\\s*\\b(?:N\\.?|Tomo|Vol\\.?|Volumen)\\s*\\d+.*$", "");
 
-    // ========== MÉTODOS DE BASE DE DATOS ==========
+        // 2. Eliminar números al final
+        limpio = limpio.replaceAll("\\s+\\d+\\s*$", "");
 
-    private int obtenerOInsertarSerie(Connection conn, String nombreSerie, String descripcion, String autor, float numeroTomo) throws SQLException {
-        String selectQuery = "SELECT id_serie, serie_totals, id_descripcion_serie FROM serie WHERE serie_name = ?";
+        // 3. Eliminar contenido entre paréntesis
+        limpio = limpio.replaceAll("\\s*\\([^)]*\\)\\s*", " ");
+
+        // 4. Eliminar símbolos especiales y de puntuación (excepto espacios)
+        limpio = limpio.replaceAll("[^a-zA-Z0-9\\s]", "");
+
+        // 5. Convertir a minúsculas
+        limpio = limpio.toLowerCase();
+
+        // 6. Normalizar espacios múltiples
+        limpio = limpio.replaceAll("\\s+", " ");
+
+        // 7. Trim
+        limpio = limpio.trim();
+
+        return limpio;
+    }
+
+    /**
+     * Busca una serie por nombre normalizado o la crea si no existe
+     */
+    private int obtenerOInsertarSerieNormalizada(Connection conn, String nombreSerie, String descripcion,
+                                                 String autor, float numeroTomo) throws SQLException {
+        String nombreNormalizado = normalizarNombreSerie(nombreSerie);
+
+        // Buscar serie con nombre normalizado similar
+        String selectQuery =
+                "SELECT id_serie, serie_totals, id_descripcion_serie, serie_name " +
+                        "FROM serie " +
+                        "WHERE LOWER(REGEXP_REPLACE(REGEXP_REPLACE(serie_name, '[^a-zA-Z0-9 ]', ''), '\\\\s+', ' ')) = ?";
+
         try (PreparedStatement ps = conn.prepareStatement(selectQuery)) {
-            ps.setString(1, nombreSerie);
+            ps.setString(1, nombreNormalizado);
             ResultSet rs = ps.executeQuery();
 
-            // Ya existe la serie
             if (rs.next()) {
                 int idSerie = rs.getInt("id_serie");
                 int serieTotals = rs.getInt("serie_totals");
                 int idDescSerie = rs.getInt("id_descripcion_serie");
+                String nombreOriginal = rs.getString("serie_name");
 
-                // ✅ 1. Actualizar serie_totals si encontramos un tomo mayor
+                // Actualizar serie_totals si encontramos un tomo mayor
                 if (numeroTomo > serieTotals) {
                     try (PreparedStatement psUpdate = conn.prepareStatement(
                             "UPDATE serie SET serie_totals = ? WHERE id_serie = ?")) {
@@ -213,11 +274,11 @@ public class PruebaConexionBaseDeDatos {
                         psUpdate.executeUpdate();
                     }
                     synchronized (System.out) {
-                        System.out.println("🔁 Actualizado total de tomos para " + nombreSerie + ": " + (int) numeroTomo);
+                        System.out.println("🔁 Actualizado total de tomos para " + nombreOriginal + ": " + (int) numeroTomo);
                     }
                 }
 
-                // ✅ 2. Si es tomo 1 y la descripción está vacía, actualizar descripción_serie
+                // Si es tomo 1 y la descripción está vacía, actualizar descripción_serie
                 if (numeroTomo == 1 && descripcion != null && !descripcion.isEmpty()) {
                     try (PreparedStatement psCheckDesc = conn.prepareStatement(
                             "SELECT description_serie FROM descripcion_serie WHERE id_descripcion_serie = ?")) {
@@ -230,7 +291,7 @@ public class PruebaConexionBaseDeDatos {
                                 psUpdateDesc.setInt(2, idDescSerie);
                                 psUpdateDesc.executeUpdate();
                                 synchronized (System.out) {
-                                    System.out.println("📝 Descripción de serie actualizada con la del tomo 1: " + nombreSerie);
+                                    System.out.println("📝 Descripción de serie actualizada: " + nombreOriginal);
                                 }
                             }
                         }
@@ -241,21 +302,27 @@ public class PruebaConexionBaseDeDatos {
             }
         }
 
-        // ✅ Si la serie NO existe, la creamos normalmente
+        // Si no existe, crear nueva serie con el nombre original (no normalizado)
         int idDesc = insertarDescripcionSerie(conn, (numeroTomo == 1) ? descripcion : "");
         String insert = "INSERT INTO serie (serie_name, serie_totals, author_name, id_descripcion_serie) VALUES (?, ?, ?, ?)";
         try (PreparedStatement ps = conn.prepareStatement(insert, Statement.RETURN_GENERATED_KEYS)) {
-            ps.setString(1, nombreSerie);
+            ps.setString(1, nombreSerie); // Guardar nombre original, no normalizado
             ps.setInt(2, (int) numeroTomo);
             ps.setString(3, autor);
             ps.setInt(4, idDesc);
             ps.executeUpdate();
             ResultSet rs = ps.getGeneratedKeys();
-            if (rs.next()) return rs.getInt(1);
+            if (rs.next()) {
+                synchronized (System.out) {
+                    System.out.println("🆕 Nueva serie creada: " + nombreSerie + " (normalizada: " + nombreNormalizado + ")");
+                }
+                return rs.getInt(1);
+            }
         }
         return -1;
     }
 
+    // ========== MÉTODOS DE BASE DE DATOS (sin cambios) ==========
 
     private int insertarDescripcionSerie(Connection conn, String descripcion) throws SQLException {
         String insert = "INSERT INTO descripcion_serie (description_serie) VALUES (?)";
@@ -316,7 +383,7 @@ public class PruebaConexionBaseDeDatos {
         }
     }
 
-    // ========== UTILIDADES ==========
+    // ========== UTILIDADES (sin cambios) ==========
 
     private void inicializarArchivoFallidos() {
         try {
@@ -376,4 +443,3 @@ public class PruebaConexionBaseDeDatos {
         catch (Exception e) { return "0"; }
     }
 }
-

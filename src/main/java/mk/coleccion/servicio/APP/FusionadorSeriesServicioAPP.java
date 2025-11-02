@@ -286,18 +286,36 @@ public class FusionadorSeriesServicioAPP {
                         resultado.addMangasMovidos(mangasMovidos);
                     }
 
-                    // 2. Actualizar coleccion_serie
+                    // 2. Actualizar coleccion_serie (en dos pasos para evitar el error de MySQL)
+// Paso 2a: Obtener usuarios que tienen la serie origen
+                    String selectUsuarios =
+                            "SELECT DISTINCT id_usuario FROM coleccion_serie WHERE id_serie = ?";
+                    java.util.List<Integer> usuariosAfectados = new java.util.ArrayList<>();
+                    try (PreparedStatement ps = conn.prepareStatement(selectUsuarios)) {
+                        ps.setInt(1, idOrigen);
+                        ResultSet rs = ps.executeQuery();
+                        while (rs.next()) {
+                            usuariosAfectados.add(rs.getInt("id_usuario"));
+                        }
+                    }
+
+// Paso 2b: Actualizar cada usuario si no tiene ya la serie destino
                     String updateColeccionSerie =
                             "UPDATE coleccion_serie SET id_serie = ? " +
-                                    "WHERE id_serie = ? AND NOT EXISTS (" +
-                                    "  SELECT 1 FROM coleccion_serie cs2 " +
-                                    "  WHERE cs2.id_serie = ? AND cs2.id_usuario = coleccion_serie.id_usuario" +
+                                    "WHERE id_serie = ? AND id_usuario = ? " +
+                                    "AND NOT EXISTS ( " +
+                                    "  SELECT 1 FROM (SELECT * FROM coleccion_serie) cs2 " +
+                                    "  WHERE cs2.id_serie = ? AND cs2.id_usuario = ?" +
                                     ")";
                     try (PreparedStatement ps = conn.prepareStatement(updateColeccionSerie)) {
-                        ps.setInt(1, idDestino);
-                        ps.setInt(2, idOrigen);
-                        ps.setInt(3, idDestino);
-                        ps.executeUpdate();
+                        for (Integer idUsuario : usuariosAfectados) {
+                            ps.setInt(1, idDestino);
+                            ps.setInt(2, idOrigen);
+                            ps.setInt(3, idUsuario);
+                            ps.setInt(4, idDestino);
+                            ps.setInt(5, idUsuario);
+                            ps.executeUpdate();
+                        }
                     }
 
                     // 3. Eliminar coleccion_serie duplicados
